@@ -1,0 +1,345 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #000;
+    overflow: hidden;
+    touch-action: none;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#gameCanvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    cursor: crosshair;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 10;
+}
+
+#ui-layer div {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    border: 2px solid #fff;
+    text-shadow: 2px 2px 0 #000;
+}
+
+#start-screen, #game-over-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #5C94FC 0%, #5C94FC 70%, #00A800 70%, #008000 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+}
+
+#start-screen h1, #game-over-screen h1 {
+    font-size: 48px;
+    color: #fff;
+    text-shadow: 
+        4px 4px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+    margin-bottom: 20px;
+    letter-spacing: 4px;
+}
+
+#start-screen p, #game-over-screen p {
+    font-size: 18px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    margin: 10px 0;
+    text-align: center;
+}
+
+#start-btn, #restart-btn {
+    margin-top: 30px;
+    padding: 15px 40px;
+    font-size: 20px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    background: #FF6B00;
+    color: #fff;
+    border: 4px solid #fff;
+    cursor: pointer;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 4px 4px 0 #000;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+#start-btn:hover, #restart-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #000;
+}
+
+#start-btn:active, #restart-btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 #000;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#round-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 25;
+}
+
+#round-screen h1 {
+    font-size: 56px;
+    color: #FF6B00;
+    text-shadow: 
+        4px 4px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+    margin-bottom: 10px;
+    letter-spacing: 4px;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+#round-screen p {
+    font-size: 24px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+#initials-entry {
+    margin: 20px 0;
+    text-align: center;
+}
+
+#initials-entry p {
+    color: #FF6B00;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+#initials-input {
+    font-family: 'Courier New', monospace;
+    font-size: 32px;
+    width: 120px;
+    text-align: center;
+    text-transform: uppercase;
+    padding: 10px;
+    border: 4px solid #fff;
+    background: #000;
+    color: #fff;
+    margin: 10px;
+}
+
+#save-score-btn {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    padding: 12px 24px;
+    background: #00A800;
+    color: #fff;
+    border: 4px solid #fff;
+    cursor: pointer;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 4px 4px 0 #000;
+}
+
+#save-score-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #000;
+}
+
+#leaderboard {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 3px solid #fff;
+    min-width: 250px;
+}
+
+#leaderboard h2 {
+    color: #FF6B00;
+    font-size: 24px;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 0 #000;
+}
+
+.leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #444;
+    font-size: 20px;
+    color: #fff;
+}
+
+.leaderboard-entry:last-child {
+    border-bottom: none;
+}
+
+.leaderboard-entry .rank {
+    color: #FFD700;
+    width: 30px;
+}
+
+.leaderboard-entry .initials {
+    flex: 1;
+    text-align: center;
+}
+
+.leaderboard-entry .score {
+    color: #5CFC5C;
+    width: 80px;
+    text-align: right;
+}
+
+#pass-line-container {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    text-align: center;
+}
+
+#pass-line-label {
+    color: #5C94FC;
+    font-size: 12px;
+    font-weight: bold;
+    text-shadow: 1px 1px 0 #000;
+    margin-bottom: 4px;
+}
+
+#pass-line-bar {
+    width: 200px;
+    height: 16px;
+    background: #000;
+    border: 2px solid #fff;
+    position: relative;
+    display: flex;
+}
+
+#pass-line-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #5C94FC;
+    transition: left 0.3s;
+}
+
+.hit-indicator {
+    flex: 1;
+    border-right: 1px solid #333;
+    background: #222;
+}
+
+.hit-indicator:last-child {
+    border-right: none;
+}
+
+.hit-indicator.hit {
+    background: #FF6B00;
+}
+
+.hit-indicator.miss {
+    background: #333;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    #ui-layer div {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+    
+    #start-screen h1, #game-over-screen h1 {
+        font-size: 32px;
+    }
+    
+    #start-screen p, #game-over-screen p {
+        font-size: 14px;
+    }
+    
+    #start-btn, #restart-btn {
+        padding: 12px 30px;
+        font-size: 16px;
+    }
+
+    #round-screen h1 {
+        font-size: 40px;
+    }
+
+    #round-screen p {
+        font-size: 18px;
+    }
+
+    #pass-line-container {
+        bottom: 60px;
+    }
+
+    #pass-line-bar {
+        width: 150px;
+        height: 12px;
+    }
+}
+
+/* Flash effect for shooting */
+@keyframes flash {
+    0% { background: rgba(255, 255, 255, 0.8); }
+    100% { background: transparent; }
+}
+
+.flash-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 15;
+    animation: flash 0.1s ease-out;
+}

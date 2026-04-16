@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simon Video Games - Arcade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            color: #fff;
+        }
+
+        .arcade-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .arcade-title {
+            font-size: 48px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            background: linear-gradient(90deg, #ff006e, #fb5607, #ffbe0b, #8338ec, #3a86ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 0, 110, 0.5);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.2); }
+        }
+
+        .arcade-subtitle {
+            font-size: 18px;
+            color: #888;
+            margin-top: 10px;
+            letter-spacing: 4px;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .game-card {
+            background: linear-gradient(145deg, #2a2a4a 0%, #1a1a3a 100%);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .game-card:hover::before {
+            left: 100%;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            border-color: #ff006e;
+            box-shadow: 0 20px 40px rgba(255, 0, 110, 0.3);
+        }
+
+        .game-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .game-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .game-description {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .game-controls {
+            font-size: 12px;
+            color: #666;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .play-button {
+            display: inline-block;
+            background: linear-gradient(90deg, #ff006e, #fb5607);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .play-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(255, 0, 110, 0.4);
+        }
+
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #ff006e;
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .arcade-title {
+                font-size: 32px;
+                letter-spacing: 4px;
+            }
+            
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="arcade-header">
+        <h1 class="arcade-title">Simon Video Games</h1>
+        <p class="arcade-subtitle">ARCADE COLLECTION</p>
+    </div>
+
+    <div class="games-grid">
+        <!-- Excitebike -->
+        <div class="game-card" onclick="window.location.href='Excitebike_Clone/index.html'">
+            <div class="game-icon">🏍️</div>
+            <h2 class="game-title">Excitebike</h2>
+            <p class="game-description">NES-style motocross racing with turbo boosts, temperature management, and challenging AI opponents.</p>
+            <a href="Excitebike_Clone/index.html" class="play-button">Play Now</a>
+            <div class="game-controls">
+                Z: Accelerate | X: Turbo<br>
+                ↑↓: Change Lanes | ←→: Pitch
+            </div>
+        </div>
+
+        <!-- Skateboard -->
+        <div class="game-card" onclick="window.location.href='Skateboard_Game/index.html'">
+            <div class="game-icon">🛹</div>
+            <h2 class="game-title">Mountain Skate</h2>
+            <p class="game-description">Endless skateboarding runner with kickflips, grinds, manuals, and big air tricks in a mountain-town setting.</p>
+            <a href="Skateboard_Game/index.html" class="play-button">Play Now</a>
+            <div class="game-controls">
+                SPACE: Jump | F: Kickflip<br>
+                T: 180 | Y: 360 | B: Backflip
+            </div>
+        </div>
+
+        <!-- Super Contra -->
+        <div class="game-card" onclick="window.location.href='SuperContra_Clone/index.html'">
+            <div class="game-icon">🔫</div>
+            <h2 class="game-title">Super Contra</h2>
+            <p class="game-description">Run-and-gun action with weapon power-ups, multiple enemy types, and an epic boss battle.</p>
+            <a href="SuperContra_Clone/index.html" class="play-button">Play Now</a>
+            <div class="game-controls">
+                ←→: Move | ↑↓: Aim<br>
+                Z: Jump | X: Shoot
+            </div>
+        </div>
+
+        <!-- Super Optometry Bros -->
+        <div class="game-card" onclick="window.location.href='SuperOptometryBros/index.html'">
+            <div class="game-icon">👓</div>
+            <h2 class="game-title">Super Optometry Bros</h2>
+            <p class="game-description">Help Dr. Jones collect glasses to improve his vision while avoiding suburban hazards!</p>
+            <a href="SuperOptometryBros/index.html" class="play-button">Play Now</a>
+            <div class="game-controls">
+                ←→: Move | V: Run<br>
+                SPACE: Jump | P: Pause
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Created by Simon 🤖 | <a href="https://github.com" target="_blank">View on GitHub</a></p>
+    </div>
+</body>
+</html>

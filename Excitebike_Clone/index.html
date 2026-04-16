@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excitebike - NES Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #game-container {
+            position: relative;
+        }
+        
+        canvas {
+            border: 4px solid #fff;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+            pointer-events: none;
+        }
+        
+        #temp-gauge {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #fff;
+        }
+        
+        #temp-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, #0f0, #ff0, #f00);
+            transition: width 0.1s;
+        }
+        
+        #temp-label {
+            position: absolute;
+            bottom: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 12px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        #overheat-msg {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f00;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+            display: none;
+        }
+        
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        
+        #game-over-screen {
+            display: none;
+        }
+        
+        h1 {
+            font-size: 48px;
+            color: #5C94FC;
+            text-shadow: 4px 4px 0 #000;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+            line-height: 1.8;
+        }
+        
+        button {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            padding: 15px 30px;
+            margin: 10px;
+            background: #5C94FC;
+            color: #fff;
+            border: 3px solid #fff;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #7AB8FF;
+        }
+        
+        #recovery-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 3px 3px 0 #000;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="512" height="384"></canvas>
+        
+        <div id="ui">
+            <div>SPEED: <span id="speed">0</span></div>
+            <div>DIST: <span id="dist">0</span></div>
+        </div>
+        
+        <div id="temp-label">TEMPERATURE</div>
+        <div id="temp-gauge">
+            <div id="temp-bar"></div>
+        </div>
+        <div id="overheat-msg">OVERHEAT!</div>
+        
+        <div id="recovery-msg">
+            CRASHED!<br>
+            MASH Z & X TO RECOVER!
+        </div>
+        
+        <div id="start-screen">
+            <h1>EXCITEBIKE</h1>
+            <div class="controls">
+                <p><strong>CONTROLS:</strong></p>
+                <p>Z = Accelerate | X = Turbo</p>
+                <p>↑↓ = Change Lanes | ←→ = Pitch in air</p>
+            </div>
+            <button onclick="startGame()">START RACE</button>
+        </div>
+        
+        <div id="game-over-screen">
+            <h1>RACE OVER</h1>
+            <p>Distance: <span id="final-dist">0</span></p>
+            <button onclick="restartGame()">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // EXCITEBIKE CLONE - Complete Implementation
+        // ============================================
+        
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        // Game Constants
+        const WIDTH = 512;
+        const HEIGHT = 384;
+        const GROUND_Y = 250;
+        const LANE_HEIGHT = 35;
+        const LANE_COUNT = 4;
+        const MAX_SPEED = 12;
+        const ACCEL = 0.15;
+        const TURBO_ACCEL = 0.3;
+        const BRAKE = 0.2;
+        const FRICTION = 0.98;
+        const GRAVITY = 1.8;
+        const JUMP_POWER = 26;
+        const MAX_TEMP = 100;
+        const COOL_RATE = 0.4;
+        const HEAT_RATE = 1.2;
+        
+        // Game State
+        let gameState = 'menu'; // menu, playing, crashed, overheated, gameover
+        let frameCount = 0;
+        
+        // Input
+        const keys = {};
+        
+        // Player Bike
+        let player = {
+            x: 100,
+            y: GROUND_Y + 1 * LANE_HEIGHT + LANE_HEIGHT/2,
+            lane: 1, // 0-3
+            vy: 0,
+            speed: 0,
+            angle: 0, // Pitch angle (-0.5 to 0.5)
+            temp: 0,
+            onGround: true,
+            crashed: false,
+            crashTime: 0,
+            recoveryProgress: 0,
+            distance: 0
+        };
+        
+        // AI Opponents
+        let opponents = [];
+        
+        // Track Obstacles
+        let obstacles = [];
+        let particles = [];
+        
+        // Camera
+        let camera = { x: 0 };
+        
+        // ============================================
+        // INPUT HANDLING
+        // ============================================
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            // Prevent default for game keys
+            if(['z','x','arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        function init() {
+            generateTrack();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function generateTrack() {
+            obstacles = [];
+            
+            // Generate track segments
+            for (let x = 500; x < 20000; x += 200 + Math.random() * 300) {
+                const type = Math.random();
+                const lane = Math.floor(Math.random() * LANE_COUNT);
+                
+                if (type < 0.3) {
+                    // Small ramp
+                    obstacles.push({
+                        x: x,
+                        lane: lane,
+                        type: 'ramp_small',
+                        width: 60,
+                        height: 50
+                    });
+                } else if (type < 0.5) {
+                    // Large ramp
+                    obstacles.push({
+                        x: x,
+                        lane: lane,
+                        type: 'ramp_large',
+                        width: 100,
+                        height: 90
+                    });
+                } else if (type < 0.7) {
+                    // Mud pit
+                    obstacles.push({
+                        x: x,
+                        lane: lane,
+                        type: 'mud',
+                        width: 80,
+                        height: 0
+                    });
+                } else if (type < 0.85) {
+                    // Cool-down arrow
+                    obstacles.push({
+                        x: x,
+                        lane: lane,
+                        type: 'cooldown',
+                        width: 30,
+                        height: 0
+                    });
+                }
+            }
+            
+            // Generate AI opponents
+            opponents = [];
+            for (let i = 0; i < 3; i++) {
+                opponents.push({
+                    x: 400 + i * 200,
+                    lane: i % LANE_COUNT,
+                    y: GROUND_Y + (i % LANE_COUNT) * LANE_HEIGHT + LANE_HEIGHT/2,
+                    vy: 0,
+                    speed: 4 + Math.random() * 2,
+                    angle: 0,
+                    onGround: true,
+                    color: ['#FF0000', '#FF8800', '#8800FF'][i],
+                    distance: 0
+                });
+            }
+        }
+        
+        // ============================================
+        // GAME LOOP
+        // ============================================
+        
+        function gameLoop() {
+            update();
+            draw();
+            frameCount++;
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // ============================================
+        // UPDATE LOGIC
+        // ============================================
+        
+        function update() {
+            if (gameState === 'menu' || gameState === 'gameover') return;
+            
+            if (gameState === 'crashed') {
+                updateCrashRecovery();
+                return;
+            }
+            
+            if (gameState === 'overheated') {
+                updateOverheat();
+                return;
+            }
+            
+            updatePlayer();
+            updateOpponents();
+            updateParticles();
+            updateCamera();
+            updateUI();
+        }
+        
+        function updatePlayer() {
+            // Handle acceleration
+            let accelerating = false;
+            
+            if (keys['z']) {
+                player.speed += ACCEL;
+                accelerating = true;
+            }
+            
+            if (keys['x']) {
+                if (player.temp < MAX_TEMP) {
+                    player.speed += TURBO_ACCEL;
+                    player.temp += HEAT_RATE;
+                    accelerating = true;
+                }
+            }
+            
+            // Cool down if not using turbo
+            if (!keys['x']) {
+                player.temp -= COOL_RATE;
+            }
+            player.temp = Math.max(0, Math.min(player.temp, MAX_TEMP));
+            
+            // Check overheat
+            if (player.temp >= MAX_TEMP) {
+                gameState = 'overheated';
+                player.speed = 0;
+                return;
+            }
+            
+            // Apply friction
+            if (!accelerating) {
+                player.speed *= FRICTION;
+            }
+            
+            // Clamp speed
+            player.speed = Math.max(0, Math.min(player.speed, MAX_SPEED));
+            
+            // Lane switching - allow all 4 lanes (0, 1, 2, 3)
+            if (keys['arrowup'] && frameCount % 8 === 0) {
+                if (player.lane > 0) {
+                    player.lane--;
+                }
+            }
+            if (keys['arrowdown'] && frameCount % 8 === 0) {
+                if (player.lane < LANE_COUNT - 1) {
+                    player.lane++;
+                }
+            }
+            
+            // Smooth lane transition - center in lane
+            const targetY = GROUND_Y + player.lane * LANE_HEIGHT + LANE_HEIGHT/2;
+            player.y += (targetY - player.y) * 0.2;
+            
+            // Pitch control (only in air)
+            if (!player.onGround) {
+                if (keys['arrowleft']) {
+                    player.angle -= 0.03;
+                }
+                if (keys['arrowright']) {
+                    player.angle += 0.03;
+                }
+            } else {
+                // Auto-level on ground
+                player.angle *= 0.9;
+            }
+            
+            // Clamp angle
+            player.angle = Math.max(-0.6, Math.min(0.6, player.angle));
+            
+            // Apply gravity
+            player.vy += GRAVITY;
+            player.y += player.vy;
+            
+            // Ground collision - center in lane
+            let groundLevel = GROUND_Y + player.lane * LANE_HEIGHT + LANE_HEIGHT/2;
+            let onRamp = false;
+            let rampAngle = 0;
+            
+            // Check obstacle collisions - STRICT lane check
+            for (let obs of obstacles) {
+                let obsScreenX = obs.x - camera.x;
+                // Only collide if in EXACT same lane
+                let inLane = (obs.lane === player.lane);
+                let inRange = Math.abs(player.x - obsScreenX) < obs.width/2 + 15;
+                
+                if (inLane && inRange && player.onGround) {
+                    if (obs.type === 'ramp_small') {
+                        // Only affect ground level when actually on the ramp
+                        let onRamp = player.x > obsScreenX - obs.width/2 && player.x < obsScreenX + obs.width/2;
+                        let rampProgress = (player.x - (obsScreenX - obs.width/2)) / obs.width;
+                        
+                        if (onRamp) {
+                            // Ramp curves up then launches
+                            if (rampProgress < 0.7) {
+                                // Going up the ramp
+                                let rampHeight = obs.height * Math.sin(rampProgress * Math.PI / 2);
+                                groundLevel = GROUND_Y + player.lane * LANE_HEIGHT + LANE_HEIGHT/2 - rampHeight;
+                                rampAngle = -0.3;
+                            } else {
+                                // Launch off the end!
+                                player.vy = -JUMP_POWER * (0.5 + player.speed / 8);
+                                player.onGround = false;
+                                createParticles(player.x, player.y + 20, 5, '#8B4513');
+                            }
+                        }
+                    }
+                    else if (obs.type === 'ramp_large') {
+                        let onRamp = player.x > obsScreenX - obs.width/2 && player.x < obsScreenX + obs.width/2;
+                        let rampProgress = (player.x - (obsScreenX - obs.width/2)) / obs.width;
+                        
+                        if (onRamp) {
+                            if (rampProgress < 0.75) {
+                                // Going up the ramp
+                                let rampHeight = obs.height * Math.sin(rampProgress * Math.PI / 1.8);
+                                groundLevel = GROUND_Y + player.lane * LANE_HEIGHT + LANE_HEIGHT/2 - rampHeight;
+                                rampAngle = -0.4;
+                            } else {
+                                // Big launch off the end!
+                                player.vy = -JUMP_POWER * (0.7 + player.speed / 6);
+                                player.onGround = false;
+                                createParticles(player.x, player.y + 20, 8, '#8B4513');
+                            }
+                        }
+                    }
+                    else if (obs.type === 'mud') {
+                        player.speed *= 0.7;
+                        createParticles(player.x, player.y + 20, 2, '#4a3728');
+                    }
+                    else if (obs.type === 'cooldown') {
+                        player.temp = 0;
+                        createParticles(player.x, player.y, 10, '#00FFFF');
+                    }
+                }
+            }
+            
+            // Landing logic
+            if (player.y >= groundLevel) {
+                if (!player.onGround && player.vy > 0) {
+                    // Just landed - check landing angle (only if falling fast)
+                    if (player.vy > 3) {
+                        let landingPenalty = Math.abs(player.angle - rampAngle);
+                        
+                        if (landingPenalty > 0.4) {
+                            // Bad landing - lose speed or crash
+                            if (landingPenalty > 0.6) {
+                                crash('bad_landing');
+                                return;
+                            }
+                            player.speed *= 0.6;
+                            createParticles(player.x, player.y + 20, 5, '#888');
+                        }
+                    }
+                }
+                
+                player.y = groundLevel;
+                player.vy = 0;
+                player.onGround = true;
+            } else {
+                player.onGround = false;
+            }
+            
+            // Check grass boundaries
+            if (player.lane < 0 || player.lane >= LANE_COUNT) {
+                player.speed *= 0.9;
+            }
+            
+            // Update distance
+            player.distance += player.speed / 10;
+            
+            // Check opponent collisions (disabled for testing)
+            /*
+            for (let opp of opponents) {
+                let dx = (opp.x - camera.x) - player.x;
+                let dy = opp.y - player.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < 30) {
+                    if (dx > 0) {
+                        // Hit opponent from behind - crash
+                        crash('opponent_collision');
+                    } else {
+                        // Opponent hits us - they crash
+                        opp.speed = 0;
+                        createParticles(opp.x + camera.x, opp.y, 10, opp.color);
+                    }
+                }
+            }
+            */
+        }
+        
+        function updateOpponents() {
+            for (let opp of opponents) {
+                // Simple AI
+                if (opp.speed < MAX_SPEED * 0.7) {
+                    opp.speed += 0.05;
+                }
+                
+                // Random lane changes
+                if (Math.random() < 0.005) {
+                    opp.lane = Math.floor(Math.random() * LANE_COUNT);
+                }
+                
+                // Smooth lane transition - center in lane
+                let targetY = GROUND_Y + opp.lane * LANE_HEIGHT + LANE_HEIGHT/2;
+                opp.y += (targetY - opp.y) * 0.1;
+                
+                // Move forward
+                opp.x += opp.speed - player.speed;
+                opp.distance += opp.speed / 10;
+                
+                // Respawn if too far behind
+                if (opp.x < -200) {
+                    opp.x = WIDTH + 100 + Math.random() * 200;
+                    opp.speed = 4 + Math.random() * 2;
+                }
+                
+                // Simple jump over ramps
+                for (let obs of obstacles) {
+                    let dx = obs.x - (opp.x + camera.x);
+                    if (Math.abs(dx) < 50 && obs.lane === opp.lane && opp.onGround) {
+                        if (obs.type.includes('ramp') && Math.random() < 0.3) {
+                            opp.vy = -JUMP_POWER * 0.8;
+                            opp.onGround = false;
+                        }
+                    }
+                }
+                
+                // Gravity
+                if (!opp.onGround) {
+                    opp.vy += GRAVITY;
+                    opp.y += opp.vy;
+                    if (opp.y >= GROUND_Y + opp.lane * LANE_HEIGHT + LANE_HEIGHT/2) {
+                        opp.y = GROUND_Y + opp.lane * LANE_HEIGHT + LANE_HEIGHT/2;
+                        opp.vy = 0;
+                        opp.onGround = true;
+                    }
+                }
+            }
+        }
+        
+        function updateCrashRecovery() {
+            // Mash Z and X to recover
+            if (keys['z'] || keys['x']) {
+                player.recoveryProgress += 2;
+            }
+            
+            if (player.recoveryProgress >= 100) {
+                gameState = 'playing';
+                player.crashed = false;
+                player.recoveryProgress = 0;
+                player.speed = 2;
+                document.getElementById('recovery-msg').style.display = 'none';
+            }
+            
+            // Update rider animation
+            player.crashTime++;
+        }
+        
+        function updateOverheat() {
+            player.temp -= 1.5;
+            
+            if (player.temp <= 0) {
+                gameState = 'playing';
+                player.temp = 0;
+                document.getElementById('overheat-msg').style.display = 'none';
+            }
+        }
+        
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life--;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+        
+        function updateCamera() {
+            camera.x = player.distance * 10 - 100;
+        }
+        
+        function updateUI() {
+            document.getElementById('speed').textContent = Math.floor(player.speed * 10);
+            document.getElementById('dist').textContent = Math.floor(player.distance);
+            
+            let tempPercent = (player.temp / MAX_TEMP) * 100;
+            document.getElementById('temp-bar').style.width = tempPercent + '%';
+            
+            if (gameState === 'overheated') {
+                document.getElementById('overheat-msg').style.display = 'block';
+            } else {
+                document.getElementById('overheat-msg').style.display = 'none';
+            }
+        }
+        
+        // ============================================
+        // CRASH MECHANIC
+        // ============================================
+        
+        function crash(reason = 'unknown') {
+            console.log('Crash reason:', reason);
+            gameState = 'crashed';
+            player.crashed = true;
+            player.speed = 0;
+            player.vy = -5;
+            player.crashTime = 0;
+            player.recoveryProgress = 0;
+            
+            createParticles(player.x + camera.x, player.y, 15, '#FF0000');
+            document.getElementById('recovery-msg').style.display = 'block';
+        }
+        
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: -Math.random() * 6,
+                    life: 30 + Math.random() * 20,
+                    color: color
+                });
+            }
+        }
+        
+        // ============================================
+        // RENDERING
+        // ============================================
+        
+        function draw() {
+            // Clear
+            ctx.fillStyle = '#5C94FC';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            if (gameState === 'menu') return;
+            
+            // Draw mountains (parallax)
+            ctx.fillStyle = '#4682B4';
+            for (let i = 0; i < 8; i++) {
+                let x = ((i * 80 - camera.x * 0.2) % (WIDTH + 80)) - 40;
+                ctx.beginPath();
+                ctx.moveTo(x, GROUND_Y);
+                ctx.lineTo(x + 40, GROUND_Y - 60);
+                ctx.lineTo(x + 80, GROUND_Y);
+                ctx.fill();
+            }
+            
+            // Draw track lanes
+            for (let lane = 0; lane < LANE_COUNT; lane++) {
+                let laneTop = GROUND_Y + lane * LANE_HEIGHT;
+                let laneCenter = laneTop + LANE_HEIGHT/2;
+                
+                // Dirt
+                ctx.fillStyle = lane % 2 === 0 ? '#D2691E' : '#CD853F';
+                ctx.fillRect(0, laneTop, WIDTH, LANE_HEIGHT);
+                
+
+                
+                // Lane marker at bottom of lane
+                if (lane < LANE_COUNT - 1) {
+                    ctx.strokeStyle = '#8B4513';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([15, 15]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, laneTop + LANE_HEIGHT);
+                    ctx.lineTo(WIDTH, laneTop + LANE_HEIGHT);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.lineWidth = 1;
+                }
+            }
+            
+            // Grass borders
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, GROUND_Y - 8, WIDTH, 8);
+            ctx.fillRect(0, GROUND_Y + LANE_COUNT * LANE_HEIGHT, WIDTH, 20);
+            
+            // Draw obstacles
+            for (let obs of obstacles) {
+                let screenX = obs.x - camera.x;
+                if (screenX < -100 || screenX > WIDTH + 100) continue;
+                
+                let laneTopY = GROUND_Y + obs.lane * LANE_HEIGHT;
+                let laneCenterY = laneTopY + LANE_HEIGHT/2;
+                
+                if (obs.type === 'ramp_small') {
+                    // 3D ramp with depth
+                    let rampTop = laneCenterY - obs.height;
+                    
+                    // Side face (darker for 3D effect)
+                    ctx.fillStyle = '#654321';
+                    ctx.beginPath();
+                    ctx.moveTo(screenX - obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX + obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX + obs.width/2 + 10, laneCenterY + 15);
+                    ctx.lineTo(screenX - obs.width/2 + 10, laneCenterY + 15);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Top face
+                    ctx.fillStyle = '#8B4513';
+                    ctx.beginPath();
+                    ctx.moveTo(screenX - obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX + obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX + obs.width/2, rampTop);
+                    ctx.lineTo(screenX - obs.width/2, rampTop);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Grass on top
+                    ctx.fillStyle = '#228B22';
+                    ctx.fillRect(screenX - obs.width/2, rampTop - 3, obs.width, 3);
+                }
+                else if (obs.type === 'ramp_large') {
+                    // 3D large ramp
+                    let rampTop = laneCenterY - obs.height;
+                    
+                    // Side face
+                    ctx.fillStyle = '#654321';
+                    ctx.beginPath();
+                    ctx.moveTo(screenX - obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX + obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX + obs.width/2 + 15, laneCenterY + 20);
+                    ctx.lineTo(screenX - obs.width/2 + 15, laneCenterY + 20);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Top face (triangular)
+                    ctx.fillStyle = '#8B4513';
+                    ctx.beginPath();
+                    ctx.moveTo(screenX - obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX + obs.width/2, laneCenterY);
+                    ctx.lineTo(screenX, rampTop);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Grass on top
+                    ctx.fillStyle = '#228B22';
+                    ctx.fillRect(screenX - 20, rampTop - 3, 40, 3);
+                }
+                else if (obs.type === 'mud') {
+                    ctx.fillStyle = '#4a3728';
+                    ctx.beginPath();
+                    ctx.ellipse(screenX, laneCenterY + 10, 40, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                else if (obs.type === 'cooldown') {
+                    ctx.fillStyle = '#00FFFF';
+                    ctx.beginPath();
+                    ctx.moveTo(screenX, laneCenterY - 5);
+                    ctx.lineTo(screenX + 10, laneCenterY + 5);
+                    ctx.lineTo(screenX - 10, laneCenterY + 5);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+            
+            // Draw particles
+            for (let p of particles) {
+                let screenX = p.x - camera.x;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(screenX - 2, p.y - 2, 4, 4);
+            }
+            
+            // Draw opponents
+            for (let opp of opponents) {
+                drawBike(opp.x, opp.y, opp.angle, opp.color, false);
+            }
+            
+            // Draw player
+            if (player.crashed) {
+                drawCrashedPlayer();
+            } else {
+                drawBike(player.x, player.y, player.angle, '#00AA00', true);
+            }
+        }
+        
+        function drawBike(x, y, angle, color, isPlayer) {
+            // Draw shadow at ground level (before translating for bike rotation)
+            if (isPlayer) {
+                // Calculate ground Y for this lane (center of lane)
+                let groundY = GROUND_Y + player.lane * LANE_HEIGHT + LANE_HEIGHT/2 + 15;
+                let height = groundY - y;
+                
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(x, groundY + 5, 15 + height * 0.1, 5 + height * 0.05, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.save();
+            ctx.translate(x, y + 20);
+            ctx.rotate(angle);
+            
+            // Rear wheel
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.arc(-12, 8, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#444';
+            ctx.beginPath();
+            ctx.arc(-12, 8, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Front wheel
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.arc(12, 8, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#444';
+            ctx.beginPath();
+            ctx.arc(12, 8, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Bike body
+            ctx.fillStyle = color;
+            ctx.fillRect(-14, -5, 28, 10);
+            
+            // Seat
+            ctx.fillStyle = '#222';
+            ctx.fillRect(-12, -10, 10, 5);
+            
+            // Handlebars
+            ctx.fillStyle = '#888';
+            ctx.fillRect(8, -15, 3, 12);
+            ctx.fillRect(6, -15, 8, 3);
+            
+            // Rider
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(-8, -22, 14, 14);
+            
+            // Helmet
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(0, -26, 7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Helmet stripe
+            ctx.fillStyle = color;
+            ctx.fillRect(-7, -29, 14, 3);
+            
+            // Visor
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-4, -27, 8, 3);
+            
+            ctx.restore();
+        }
+        
+        function drawCrashedPlayer() {
+            // Bike on side
+            ctx.fillStyle = '#00AA00';
+            ctx.fillRect(player.x - 20, player.y + 15, 40, 10);
+            
+            // Rider sliding
+            let slideX = player.x + Math.sin(player.crashTime * 0.1) * 30;
+            let slideY = player.y + 10;
+            
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(slideX - 8, slideY - 8, 16, 16);
+            
+            // Recovery progress bar
+            ctx.fillStyle = '#333';
+            ctx.fillRect(player.x - 30, player.y - 40, 60, 8);
+            ctx.fillStyle = '#0F0';
+            ctx.fillRect(player.x - 28, player.y - 38, 56 * (player.recoveryProgress / 100), 4);
+        }
+        
+        // ============================================
+        // GAME CONTROL
+        // ============================================
+        
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            gameState = 'playing';
+            
+            // Reset player
+            player = {
+                x: 100,
+                y: GROUND_Y + 1 * LANE_HEIGHT + LANE_HEIGHT/2,
+                lane: 1,
+                vy: 0,
+                speed: 0,
+                angle: 0,
+                temp: 0,
+                onGround: true,
+                crashed: false,
+                crashTime: 0,
+                recoveryProgress: 0,
+                distance: 0
+            };
+            
+            generateTrack();
+        }
+        
+        function restartGame() {
+            document.getElementById('game-over-screen').style.display = 'none';
+            startGame();
+        }
+        
+        // Start
+        init();
+    </script>
+</body>
+</html>

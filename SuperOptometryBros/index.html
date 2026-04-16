@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Optometry Bros</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 60px rgba(0, 150, 255, 0.3), inset 0 0 100px rgba(0, 0, 0, 0.5);
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #90EE90 50%, #228B22 100%);
+            transition: filter 0.5s ease-out;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        #gameCanvas.blur-8 { filter: blur(8px); }
+        #gameCanvas.blur-4 { filter: blur(4px); }
+        #gameCanvas.blur-0 { filter: blur(0px); }
+        
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .hud-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #4a90d9;
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .hud-panel span { color: #ffd700; }
+        
+        #visionIndicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .vision-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+        
+        .vision-0 { background: #666; }
+        .vision-1 { background: #4a90d9; }
+        .vision-2 { background: #ffd700; }
+        
+        #startScreen, #gameOverScreen, #winScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 20;
+            backdrop-filter: blur(5px);
+        }
+        
+        #startScreen h1, #gameOverScreen h1, #winScreen h1 {
+            color: #ffd700;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            text-align: center;
+        }
+        
+        #startScreen p, #gameOverScreen p, #winScreen p {
+            color: white;
+            font-size: 18px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #4a90d9 0%, #2c5aa0 100%);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 144, 217, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 144, 217, 0.6);
+        }
+        
+        .hidden { display: none !important; }
+        
+        .controls {
+            margin-top: 20px;
+            color: #aaa;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .controls span {
+            color: #ffd700;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="450"></canvas>
+        
+        <div id="hud">
+            <div class="hud-panel">
+                Lives: <span id="livesDisplay">3</span>
+            </div>
+            <div class="hud-panel" id="visionIndicator">
+                Vision: <span id="visionDisplay">No Glasses</span>
+                <div class="vision-icon vision-0" id="visionIcon"></div>
+                <span id="shieldDisplay" style="margin-left: 10px; display: none;">🛡️</span>
+            </div>
+        </div>
+        
+        <div id="startScreen">
+            <h1>👓 Super Optometry Bros</h1>
+            <p>Help Dr. Jones reach Smoky Hill Eye Care!<br><br>
+            Collect glasses power-ups to improve your vision. (You start with Standard Glasses!)<br>
+            At max vision, glasses give you a face shield that blocks one hit!<br>
+            Avoid suburban hazards and their projectiles.</p>
+            <button class="btn" onclick="startGame()">Start Game</button>
+            <div class="controls">
+                <span>← →</span> Move &nbsp;|&nbsp; <span>V</span> Run &nbsp;|&nbsp; <span>SPACE</span> Jump &nbsp;|&nbsp; <span>P</span> Pause
+            </div>
+        </div>
+        
+        <div id="gameOverScreen" class="hidden">
+            <h1>💔 Game Over</h1>
+            <p>You ran out of lives!</p>
+            <button class="btn" onclick="restartGame()">Try Again</button>
+        </div>
+        
+        <div id="winScreen" class="hidden">
+            <h1>🎉 You Made It!</h1>
+            <p>Dr. Jones safely reached Smoky Hill Eye Care!</p>
+            <button class="btn" onclick="restartGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // GAME CONFIGURATION
+        // ============================================
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 450;
+        const GRAVITY = 0.4;
+        const JUMP_FORCE = -10;
+        const MOVE_SPEED = 3;
+        const RUN_SPEED = 6;
+        const LEVEL_LENGTH = 6000;
+        
+        const VISION_STATES = {
+            0: { blur: 8, name: 'No Glasses', color: '#666' },
+            1: { blur: 4, name: 'Standard Glasses', color: '#4a90d9' },
+            2: { blur: 0, name: 'Sports Goggles', color: '#ffd700' }
+        };
+        
+        // ============================================
+        // GAME STATE
+        // ============================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = 'menu';
+        let lives = 3;
+        let visionState = 1;
+        let hasFaceShield = false;
+        let invincibilityTime = 0;
+        let cameraX = 0;
+        let frameCount = 0;
+        
+        const keys = {};
+        let jumpPressed = false;
+        
+        const player = {
+            x: 100,
+            y: 300,
+            width: 30,
+            height: 40,
+            vx: 0,
+            vy: 0,
+            onGround: false,
+            facingRight: true
+        };
+        
+        let platforms = [];
+        let powerUps = [];
+        let enemies = [];
+        let projectiles = [];
+        let particles = [];
+        let goal = null;
+        
+        // ============================================
+        // INPUT HANDLING
+        // ============================================
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (e.code === 'Space' && gameState === 'playing') {
+                e.preventDefault();
+                if (!jumpPressed && player.onGround) {
+                    jumpPressed = true;
+                    // Jump higher/further when running
+                    let jumpPower = keys['KeyV'] ? JUMP_FORCE * 1.2 : JUMP_FORCE;
+                    player.vy = jumpPower;
+                    player.onGround = false;
+                    createParticles(player.x + player.width/2, player.y + player.height, 5, '#fff');
+                }
+            }
+            
+            if (e.code === 'KeyP' && gameState === 'playing') {
+                gameState = 'paused';
+            } else if (e.code === 'KeyP' && gameState === 'paused') {
+                gameState = 'playing';
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            if (e.code === 'Space') {
+                jumpPressed = false;
+            }
+        });
+        
+        // ============================================
+        // LEVEL GENERATION
+        // ============================================
+        function generateLevel() {
+            platforms = [];
+            powerUps = [];
+            enemies = [];
+            projectiles = [];
+            particles = [];
+            
+            // Ground platforms with pits
+            const groundSegments = [
+                { x: 0, w: 900 },      // Start to first pit
+                { x: 1100, w: 500 },   // After pit 1
+                { x: 1800, w: 500 },   // After pit 2
+                { x: 2500, w: 700 },   // After pit 3 to tower 1
+                { x: 3200, w: 700 },   // After tower 1 to pit 4
+                { x: 4100, w: 500 },   // After pit 4 to tower 2
+                { x: 4800, w: 300 },   // After tower 2 to pit 5
+                { x: 5360, w: 440 }    // After tower 3 to goal
+            ];
+            
+            for (let seg of groundSegments) {
+                platforms.push({ x: seg.x, y: 380, width: seg.w, height: 70, type: 'ground' });
+            }
+            
+            // Elevated platforms (removed ones that overlap with moving platforms)
+            const platformLayouts = [
+                { x: 300, y: 280, w: 100 },
+                { x: 500, y: 220, w: 80 },
+                { x: 700, y: 280, w: 120 },
+                // Removed: { x: 1000, y: 250, w: 100 } - overlaps with moving platform at x=950
+                { x: 1300, y: 200, w: 80 },
+                // Removed: { x: 1500, y: 280, w: 100 } - overlaps with moving platform at x=1650
+                { x: 1800, y: 220, w: 120 },
+                { x: 2100, y: 280, w: 100 },
+                // Removed: { x: 2400, y: 180, w: 80 } - overlaps with moving platform at x=2350
+                { x: 2700, y: 250, w: 100 },
+                { x: 3000, y: 280, w: 120 },
+                { x: 3300, y: 220, w: 100 },
+                { x: 3600, y: 280, w: 150 },
+                
+                // TOWER SECTION 1 (x: 3200-3480) - climb up and over - MOVED to avoid pit 4
+                { x: 3220, y: 340, w: 60 },      // Tower base left
+                { x: 3300, y: 300, w: 60 },      // Step 2
+                { x: 3380, y: 260, w: 60 },      // Step 3
+                { x: 3460, y: 220, w: 80 },      // Tower top platform with enemy
+                
+                // TOWER SECTION 2 (x: 3900-4300) - higher tower - MOVED to avoid overlap
+                { x: 3950, y: 320, w: 50 },      // Tower base
+                { x: 4020, y: 280, w: 50 },      // Step 2
+                { x: 4090, y: 240, w: 50 },      // Step 3
+                { x: 4160, y: 200, w: 50 },      // Step 4
+                { x: 4230, y: 160, w: 100 },     // Tower peak - high platform
+                { x: 4350, y: 250, w: 80 },      // Descent platform
+                
+                // TOWER SECTION 3 (x: 5100-5300) - final challenge - MOVED after pit 5
+                { x: 5120, y: 300, w: 60 },
+                { x: 5200, y: 250, w: 60 },
+                { x: 5280, y: 200, w: 80 }
+            ];
+            
+            // Moving platforms over pits (gaps in ground)
+            // Pit 1: x=900-1100, moving platform at y=300
+            platforms.push({ 
+                x: 950, y: 300, width: 100, height: 20, type: 'moving', 
+                minX: 920, maxX: 1080, vx: 1.5 
+            });
+            
+            // Pit 2: x=1600-1800, moving platform at y=280
+            platforms.push({ 
+                x: 1650, y: 280, width: 100, height: 20, type: 'moving', 
+                minX: 1620, maxX: 1780, vx: 2 
+            });
+            
+            // Pit 3: x=2300-2500, moving platform at y=260
+            platforms.push({ 
+                x: 2350, y: 260, width: 100, height: 20, type: 'moving', 
+                minX: 2320, maxX: 2480, vx: 1.8 
+            });
+            
+            // Pit 4: x=3900-4100 (between tower 1 and tower 2)
+            platforms.push({ 
+                x: 3950, y: 320, width: 100, height: 20, type: 'moving', 
+                minX: 3920, maxX: 4080, vx: 1.5 
+            });
+            
+            // Pit 5: x=5100-5300 (after tower 2, before tower 3)
+            platforms.push({ 
+                x: 5150, y: 300, width: 100, height: 20, type: 'moving', 
+                minX: 5120, maxX: 5280, vx: 1.8 
+            });
+            
+            platformLayouts.forEach(p => {
+                platforms.push({ x: p.x, y: p.y, width: p.w, height: 20, type: 'platform' });
+            });
+            
+            // Power-ups - first one very early to help with vision
+            powerUps.push(
+                { x: 180, y: 320, type: 'glasses', collected: false },
+                { x: 1200, y: 160, type: 'glasses', collected: false },
+                { x: 2400, y: 140, type: 'glasses', collected: false },
+                { x: 3600, y: 240, type: 'glasses', collected: false },
+                // Extended level power-ups
+                { x: 4250, y: 120, type: 'glasses', collected: false },  // On tower 2 peak (moved)
+                { x: 5600, y: 300, type: 'glasses', collected: false }   // Before final stretch (moved)
+            );
+            
+            // Nerf Kids - spaced out more, start much later
+            enemies.push(
+                { x: 1800, y: 340, type: 'nerf', width: 35, height: 40, timer: 0 },
+                { x: 2800, y: 340, type: 'nerf', width: 35, height: 40, timer: 0 },
+                { x: 3600, y: 340, type: 'nerf', width: 35, height: 40, timer: 0 },
+                // Tower enemies
+                { x: 3480, y: 180, type: 'nerf', width: 35, height: 40, timer: 0 },  // On tower 1 top (moved)
+                { x: 5600, y: 340, type: 'nerf', width: 35, height: 40, timer: 0 }   // Near end (moved)
+            );
+            
+            // Soccer Kids - spaced out more, start later
+            enemies.push(
+                { x: 2400, y: 340, type: 'soccer', width: 35, height: 40, vx: 2, timer: 0, minX: 2300, maxX: 2600 },
+                { x: 3400, y: 340, type: 'soccer', width: 35, height: 40, vx: -2, timer: 0, minX: 3250, maxX: 3600 },
+                // Tower section enemy
+                { x: 4250, y: 120, type: 'soccer', width: 35, height: 40, vx: 2, timer: 0, minX: 4230, maxX: 4330 }  // On tower 2 peak (moved)
+            );
+            
+            // Lawnmowers - spaced out more, start much later
+            enemies.push(
+                { x: 1400, y: 360, type: 'lawnmower', width: 50, height: 20, timer: 0 },
+                { x: 2600, y: 360, type: 'lawnmower', width: 50, height: 20, timer: 0 },
+                { x: 3200, y: 360, type: 'lawnmower', width: 50, height: 20, timer: 0 },
+                // Extended level enemies
+                { x: 4200, y: 360, type: 'lawnmower', width: 50, height: 20, timer: 0 },
+                { x: 4800, y: 360, type: 'lawnmower', width: 50, height: 20, timer: 0 }
+            );
+            
+            // Goal - at the end of the extended level
+            goal = { x: 5800, y: 200, width: 120, height: 180 };
+        }
+        
+        // ============================================
+        // GAME LOOP
+        // ============================================
+        function gameLoop() {
+            if (gameState === 'playing') {
+                update();
+            }
+            draw();
+            frameCount++;
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // ============================================
+        // UPDATE LOGIC
+        // ============================================
+        function update() {
+            // Player movement - V to run
+            let currentSpeed = keys['KeyV'] ? RUN_SPEED : MOVE_SPEED;
+            player.vx = 0;
+            if (keys['ArrowLeft']) {
+                player.vx = -currentSpeed;
+                player.facingRight = false;
+            }
+            if (keys['ArrowRight']) {
+                player.vx = currentSpeed;
+                player.facingRight = true;
+            }
+            
+            // Apply physics
+            player.vy += GRAVITY;
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // Keep player in bounds
+            player.x = Math.max(cameraX, Math.min(player.x, LEVEL_LENGTH - player.width));
+            
+            // Update moving platforms
+            for (let platform of platforms) {
+                if (platform.type === 'moving') {
+                    platform.x += platform.vx;
+                    if (platform.x <= platform.minX || platform.x >= platform.maxX) {
+                        platform.vx *= -1;
+                    }
+                }
+            }
+            
+            // Platform collision
+            player.onGround = false;
+            let onMovingPlatform = null;
+            for (let platform of platforms) {
+                if (checkCollision(player, platform)) {
+                    if (player.vy > 0 && player.y < platform.y) {
+                        player.y = platform.y - player.height;
+                        player.vy = 0;
+                        player.onGround = true;
+                        if (platform.type === 'moving') {
+                            onMovingPlatform = platform;
+                        }
+                    } else if (player.vy < 0 && player.y > platform.y) {
+                        player.y = platform.y + platform.height;
+                        player.vy = 0;
+                    }
+                }
+            }
+            
+            // Move player with moving platform
+            if (onMovingPlatform && player.onGround) {
+                player.x += onMovingPlatform.vx;
+            }
+            
+            // Fall off world
+            if (player.y > CANVAS_HEIGHT + 100) {
+                loseLife();
+                return;
+            }
+            
+            // Camera follow
+            cameraX = Math.max(0, Math.min(player.x - CANVAS_WIDTH/3, LEVEL_LENGTH - CANVAS_WIDTH));
+            
+            // Invincibility countdown
+            if (invincibilityTime > 0) {
+                invincibilityTime--;
+            }
+            
+            // Update power-ups
+            for (let powerUp of powerUps) {
+                if (!powerUp.collected && checkCollision(player, { x: powerUp.x, y: powerUp.y, width: 25, height: 25 })) {
+                    powerUp.collected = true;
+                    if (visionState < 2) {
+                        visionState++;
+                        updateVision();
+                        createParticles(powerUp.x + 12, powerUp.y + 12, 10, '#ffd700');
+                    } else if (!hasFaceShield) {
+                        // Already have perfect vision - get face shield instead
+                        hasFaceShield = true;
+                        updateVision();
+                        createParticles(powerUp.x + 12, powerUp.y + 12, 15, '#00ff00');
+                    }
+                }
+            }
+            
+            // Update enemies
+            for (let enemy of enemies) {
+                if (enemy.type === 'soccer') {
+                    enemy.x += enemy.vx;
+                    if (enemy.x <= enemy.minX || enemy.x >= enemy.maxX) {
+                        enemy.vx *= -1;
+                    }
+                }
+                
+                enemy.timer++;
+                if (enemy.type === 'nerf' && enemy.timer > 120) {
+                    projectiles.push({
+                        x: enemy.x,
+                        y: enemy.y - 20,
+                        vx: -4,
+                        vy: 0,
+                        type: 'dart',
+                        width: 15,
+                        height: 6
+                    });
+                    enemy.timer = 0;
+                } else if (enemy.type === 'soccer' && enemy.timer > 150) {
+                    let dir = player.x < enemy.x ? -1 : 1;
+                    projectiles.push({
+                        x: enemy.x + enemy.width/2,
+                        y: enemy.y - 10,
+                        vx: dir * 2,
+                        vy: -6,
+                        type: 'soccerball',
+                        width: 20,
+                        height: 20,
+                        bounce: true
+                    });
+                    enemy.timer = 0;
+                } else if (enemy.type === 'lawnmower' && enemy.timer > 100) {
+                    projectiles.push({
+                        x: enemy.x + enemy.width/2,
+                        y: enemy.y,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: -7 - Math.random() * 3,
+                        type: 'rock',
+                        width: 12,
+                        height: 12
+                    });
+                    enemy.timer = 0;
+                }
+            }
+            
+            // Update projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                
+                if (p.type === 'soccerball' || p.type === 'rock') {
+                    p.vy += 0.4;
+                }
+                
+                if (p.type === 'soccerball' && p.bounce && p.y > 360) {
+                    p.y = 360;
+                    p.vy = -p.vy * 0.7;
+                    if (Math.abs(p.vy) < 2) p.bounce = false;
+                }
+                
+                if (p.x < cameraX - 100 || p.x > cameraX + CANVAS_WIDTH + 100 || p.y > CANVAS_HEIGHT + 100) {
+                    projectiles.splice(i, 1);
+                    continue;
+                }
+                
+                if (invincibilityTime <= 0 && checkCollision(player, p)) {
+                    takeDamage();
+                    projectiles.splice(i, 1);
+                }
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            
+            // Check goal
+            if (checkCollision(player, goal)) {
+                winGame();
+            }
+        }
+        
+        // ============================================
+        // COLLISION DETECTION
+        // ============================================
+        function checkCollision(a, b) {
+            return a.x < b.x + b.width &&
+                   a.x + a.width > b.x &&
+                   a.y < b.y + b.height &&
+                   a.y + a.height > b.y;
+        }
+        
+        // ============================================
+        // DAMAGE & VISION SYSTEM
+        // ============================================
+        function takeDamage() {
+            if (hasFaceShield) {
+                // Face shield blocks the hit
+                hasFaceShield = false;
+                updateVision();
+                invincibilityTime = 60;
+                createParticles(player.x + player.width/2, player.y + player.height/2, 20, '#6496ff');
+            } else if (visionState > 0) {
+                visionState--;
+                updateVision();
+                invincibilityTime = 60;
+                createParticles(player.x + player.width/2, player.y + player.height/2, 15, '#ff0000');
+            } else {
+                loseLife();
+            }
+        }
+        
+        function loseLife() {
+            lives--;
+            updateHUD();
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                player.x = 100;
+                player.y = 300;
+                player.vx = 0;
+                player.vy = 0;
+                visionState = 1;
+                hasFaceShield = false;
+                updateVision();
+                invincibilityTime = 60;
+                cameraX = 0;
+                // Respawn all glasses power-ups
+                for (let powerUp of powerUps) {
+                    powerUp.collected = false;
+                }
+            }
+        }
+        
+        function updateVision() {
+            const state = VISION_STATES[visionState];
+            canvas.className = `blur-${state.blur}`;
+            document.getElementById('visionDisplay').textContent = state.name;
+            document.getElementById('visionIcon').className = `vision-icon vision-${visionState}`;
+            // Show/hide face shield indicator
+            document.getElementById('shieldDisplay').style.display = hasFaceShield ? 'inline' : 'none';
+        }
+        
+        // ============================================
+        // PARTICLES
+        // ============================================
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    life: 30 + Math.random() * 20,
+                    color: color,
+                    size: 3 + Math.random() * 4
+                });
+            }
+        }
+        
+        // ============================================
+        // RENDERING
+        // ============================================
+        function draw() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.5, '#E0F6FF');
+            gradient.addColorStop(0.5, '#90EE90');
+            gradient.addColorStop(1, '#228B22');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+            
+            // Clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            drawCloud(200, 80, 60);
+            drawCloud(600, 120, 80);
+            drawCloud(1100, 60, 70);
+            drawCloud(1600, 100, 90);
+            drawCloud(2200, 70, 65);
+            drawCloud(2800, 110, 75);
+            drawCloud(3400, 85, 85);
+            
+            // Platforms
+            for (let platform of platforms) {
+                if (platform.type === 'ground') {
+                    ctx.fillStyle = '#228B22';
+                    ctx.fillRect(platform.x, platform.y, platform.width, 10);
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(platform.x, platform.y + 10, platform.width, platform.height - 10);
+                    ctx.fillStyle = '#32CD32';
+                    for (let i = 0; i < platform.width; i += 20) {
+                        ctx.fillRect(platform.x + i, platform.y - 5, 10, 8);
+                    }
+                } else if (platform.type === 'moving') {
+                    // Moving platform - different color with arrows
+                    ctx.fillStyle = '#CD853F';
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(platform.x, platform.y + platform.height - 5, platform.width, 5);
+                    // Arrow indicating movement
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('↔', platform.x + platform.width/2, platform.y + 14);
+                } else {
+                    ctx.fillStyle = '#DEB887';
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    ctx.fillStyle = '#8B7355';
+                    ctx.fillRect(platform.x, platform.y + platform.height - 5, platform.width, 5);
+                }
+            }
+            
+            // Power-ups
+            for (let powerUp of powerUps) {
+                if (!powerUp.collected) {
+                    let floatY = Math.sin(frameCount * 0.1) * 5;
+                    ctx.fillStyle = '#4a90d9';
+                    ctx.fillRect(powerUp.x, powerUp.y + floatY, 25, 15);
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.fillRect(powerUp.x + 3, powerUp.y + floatY + 3, 8, 8);
+                    ctx.fillRect(powerUp.x + 14, powerUp.y + floatY + 3, 8, 8);
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(powerUp.x + 11, powerUp.y + floatY + 6, 3, 2);
+                    ctx.strokeStyle = `rgba(255, 215, 0, ${0.5 + Math.sin(frameCount * 0.1) * 0.3})`;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(powerUp.x - 3, powerUp.y + floatY - 3, 31, 21);
+                }
+            }
+            
+            // Enemies
+            for (let enemy of enemies) {
+                if (enemy.type === 'nerf') {
+                    ctx.fillStyle = '#FF6B6B';
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    ctx.fillStyle = '#FDBCB4';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + enemy.width/2, enemy.y - 8, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#FF8C00';
+                    ctx.fillRect(enemy.x - 10, enemy.y + 15, 15, 8);
+                } else if (enemy.type === 'soccer') {
+                    ctx.fillStyle = enemy.vx > 0 ? '#4169E1' : '#1E90FF';
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    ctx.fillStyle = '#FDBCB4';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + enemy.width/2, enemy.y - 8, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#FFF';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + enemy.width/2, enemy.y + enemy.height + 8, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.moveTo(enemy.x + enemy.width/2 - 4, enemy.y + enemy.height + 4);
+                    ctx.lineTo(enemy.x + enemy.width/2 + 4, enemy.y + enemy.height + 4);
+                    ctx.lineTo(enemy.x + enemy.width/2, enemy.y + enemy.height + 10);
+                    ctx.fill();
+                } else if (enemy.type === 'lawnmower') {
+                    ctx.fillStyle = '#DC143C';
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    ctx.fillStyle = '#8B0000';
+                    ctx.fillRect(enemy.x + 5, enemy.y - 10, 20, 12);
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.arc(enemy.x + 10, enemy.y + enemy.height, 8, 0, Math.PI * 2);
+                    ctx.arc(enemy.x + enemy.width - 10, enemy.y + enemy.height, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Projectiles
+            for (let p of projectiles) {
+                if (p.type === 'dart') {
+                    ctx.fillStyle = '#FF8C00';
+                    ctx.fillRect(p.x, p.y, p.width, p.height);
+                    ctx.fillStyle = '#00CED1';
+                    ctx.fillRect(p.x + p.width - 5, p.y, 5, p.height);
+                } else if (p.type === 'soccerball') {
+                    ctx.fillStyle = '#FFF';
+                    ctx.beginPath();
+                    ctx.arc(p.x + p.width/2, p.y + p.height/2, p.width/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else if (p.type === 'rock') {
+                    ctx.fillStyle = '#696969';
+                    ctx.beginPath();
+                    ctx.arc(p.x + p.width/2, p.y + p.height/2, p.width/2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Goal
+            if (goal) {
+                ctx.fillStyle = '#E6E6FA';
+                ctx.fillRect(goal.x, goal.y, goal.width, goal.height);
+                ctx.fillStyle = '#4B0082';
+                ctx.beginPath();
+                ctx.moveTo(goal.x - 10, goal.y);
+                ctx.lineTo(goal.x + goal.width/2, goal.y - 40);
+                ctx.lineTo(goal.x + goal.width + 10, goal.y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(goal.x + goal.width/2 - 20, goal.y + goal.height - 60, 40, 60);
+                ctx.fillStyle = '#87CEEB';
+                ctx.fillRect(goal.x + 15, goal.y + 30, 30, 40);
+                ctx.fillRect(goal.x + goal.width - 45, goal.y + 30, 30, 40);
+                ctx.fillStyle = '#4B0082';
+                ctx.fillRect(goal.x - 10, goal.y + 80, goal.width + 20, 40);
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('SMOKY HILL', goal.x + goal.width/2, goal.y + 100);
+                ctx.fillText('EYE CARE', goal.x + goal.width/2, goal.y + 115);
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.ellipse(goal.x + goal.width/2, goal.y + 55, 15, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#4B0082';
+                ctx.beginPath();
+                ctx.arc(goal.x + goal.width/2, goal.y + 55, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Player
+            drawPlayer();
+            
+            // Particles
+            for (let p of particles) {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            }
+            ctx.globalAlpha = 1;
+            
+            ctx.restore();
+            
+            // Pause overlay
+            if (gameState === 'paused') {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.fillStyle = '#FFF';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSED', CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
+                ctx.font = '18px Arial';
+                ctx.fillText('Press P to resume', CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 40);
+            }
+        }
+        
+        // ============================================
+        // DRAW PLAYER
+        // ============================================
+        function drawPlayer() {
+            let x = player.x;
+            let y = player.y;
+            let w = player.width;
+            let h = player.height;
+            
+            // Invincibility flash
+            if (invincibilityTime > 0 && Math.floor(frameCount / 4) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+            
+            // Body (white coat)
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(x + 5, y + 15, w - 10, h - 15);
+            
+            // Head
+            ctx.fillStyle = '#FDBCB4';
+            ctx.beginPath();
+            ctx.arc(x + w/2, y + 10, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes (with glasses based on vision state)
+            if (visionState === 0) {
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(x + w/2 - 3, y + 10, 2, 0, Math.PI * 2);
+                ctx.arc(x + w/2 + 3, y + 10, 2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (visionState === 1) {
+                // Standard glasses
+                ctx.fillStyle = '#4a90d9';
+                ctx.fillRect(x + w/2 - 8, y + 7, 6, 5);
+                ctx.fillRect(x + w/2 + 2, y + 7, 6, 5);
+                ctx.fillStyle = '#333';
+                ctx.fillRect(x + w/2 - 1, y + 9, 2, 1);
+            } else {
+                // Sports goggles
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(x + w/2 - 9, y + 6, 8, 7);
+                ctx.fillRect(x + w/2 + 1, y + 6, 8, 7);
+                ctx.fillStyle = '#333';
+                ctx.fillRect(x + w/2 - 1, y + 9, 2, 1);
+            }
+            
+            // Arms
+            ctx.fillStyle = '#FDBCB4';
+            if (player.onGround) {
+                ctx.fillRect(x - 2, y + 20, 6, 12);
+                ctx.fillRect(x + w - 4, y + 20, 6, 12);
+            } else {
+                ctx.fillRect(x - 2, y + 15, 6, 8);
+                ctx.fillRect(x + w - 4, y + 15, 6, 8);
+            }
+            
+            // Legs
+            ctx.fillStyle = '#333';
+            if (player.onGround) {
+                if (Math.abs(player.vx) > 0.1) {
+                    let runOffset = Math.sin(frameCount * 0.3) * 5;
+                    ctx.fillRect(x + 8 + runOffset, y + h - 10, 6, 10);
+                    ctx.fillRect(x + w - 14 - runOffset, y + h - 10, 6, 10);
+                } else {
+                    ctx.fillRect(x + 8, y + h - 10, 6, 10);
+                    ctx.fillRect(x + w - 14, y + h - 10, 6, 10);
+                }
+            } else {
+                ctx.fillRect(x + 8, y + h - 12, 6, 8);
+                ctx.fillRect(x + w - 14, y + h - 8, 6, 8);
+            }
+            
+            // Face Shield (if active)
+            if (hasFaceShield) {
+                ctx.strokeStyle = `rgba(100, 150, 255, ${0.6 + Math.sin(frameCount * 0.1) * 0.2})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(x + w/2, y + h/2, 28, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(100, 150, 255, 0.15)';
+                ctx.fill();
+            }
+            
+            ctx.globalAlpha = 1;
+        }
+        
+        // ============================================
+        // DRAW CLOUD
+        // ============================================
+        function drawCloud(x, y, size) {
+            ctx.beginPath();
+            ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+            ctx.arc(x + size * 0.4, y, size * 0.4, 0, Math.PI * 2);
+            ctx.arc(x - size * 0.4, y, size * 0.4, 0, Math.PI * 2);
+            ctx.arc(x, y - size * 0.3, size * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // ============================================
+        // GAME CONTROL FUNCTIONS
+        // ============================================
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            gameState = 'playing';
+            lives = 3;
+            visionState = 1;
+            hasFaceShield = false;
+            updateVision();
+            updateHUD();
+            generateLevel();
+            gameLoop();
+        }
+        
+        function restartGame() {
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('winScreen').classList.add('hidden');
+            gameState = 'playing';
+            lives = 3;
+            visionState = 1;
+            hasFaceShield = false;
+            invincibilityTime = 0;
+            cameraX = 0;
+            player.x = 100;
+            player.y = 300;
+            player.vx = 0;
+            player.vy = 0;
+            updateVision();
+            updateHUD();
+            generateLevel();
+        }
+        
+        function gameOver() {
+            gameState = 'gameover';
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+        
+        function winGame() {
+            gameState = 'win';
+            document.getElementById('winScreen').classList.remove('hidden');
+        }
+        
+        function updateHUD() {
+            document.getElementById('livesDisplay').textContent = lives;
+        }
+        
+        // Initialize
+        updateVision();
+    </script>
+</body>
+</html>

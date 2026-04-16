@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Duck Hunt</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="score">SCORE: 0</div>
+            <div id="round">ROUND: 1</div>
+            <div id="shots">SHOTS: 3</div>
+            <div id="ducks-hit">HIT: 0/10</div>
+        </div>
+        <div id="pass-line-container">
+            <div id="pass-line-label">PASS LINE</div>
+            <div id="pass-line-bar">
+                <div id="pass-line-marker"></div>
+            </div>
+        </div>
+        <div id="start-screen">
+            <h1>DUCK HUNT</h1>
+            <p>Click or tap to shoot the ducks!</p>
+            <p>10 ducks per round | 3 shots per duck</p>
+            <p>Hit the pass line to advance!</p>
+            <button id="start-btn">START GAME</button>
+        </div>
+        <div id="game-over-screen" class="hidden">
+            <h1>GAME OVER</h1>
+            <p id="final-score">Final Score: 0</p>
+            <div id="initials-entry" class="hidden">
+                <p>NEW HIGH SCORE!</p>
+                <p>Enter your initials:</p>
+                <input type="text" id="initials-input" maxlength="3" placeholder="AAA">
+                <button id="save-score-btn">SAVE</button>
+            </div>
+            <div id="leaderboard">
+                <h2>TOP 3</h2>
+                <div id="leaderboard-list"></div>
+            </div>
+            <button id="restart-btn">PLAY AGAIN</button>
+        </div>
+        <div id="round-screen" class="hidden">
+            <h1 id="round-text">ROUND 1</h1>
+            <p>Get ready!</p>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

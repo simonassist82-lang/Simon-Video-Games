@@ -1,0 +1,134 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 8/7;
+    background: #000;
+}
+
+#gameCanvas {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    pointer-events: none;
+}
+
+#speed-meter { color: #0f0; }
+#temp-meter { color: #0f0; }
+#temp-meter.overheat { color: #f00; animation: blink 0.5s infinite; }
+#time { color: #ff0; }
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+#start-screen, #game-over-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+#start-screen h1, #game-over-screen h1 {
+    font-size: 48px;
+    color: #f80;
+    text-shadow: 4px 4px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+    margin-bottom: 30px;
+    letter-spacing: 4px;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.menu-btn, #btn-restart, #btn-menu {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    padding: 15px 30px;
+    background: #444;
+    color: #fff;
+    border: 3px solid #fff;
+    cursor: pointer;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 4px 4px 0 #000;
+    transition: all 0.1s;
+}
+
+.menu-btn:hover, #btn-restart:hover, #btn-menu:hover {
+    background: #666;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #000;
+}
+
+.menu-btn:active {
+    background: #888;
+}
+
+.controls {
+    text-align: center;
+    color: #ccc;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.controls p:first-child {
+    color: #ff0;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#final-time, #final-rank {
+    font-size: 24px;
+    color: #fff;
+    margin: 10px 0;
+}
+
+#btn-restart, #btn-menu {
+    margin: 10px;
+    min-width: 200px;
+}
