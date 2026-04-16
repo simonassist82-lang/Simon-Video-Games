@@ -1,6 +1,7 @@
 // ============================================
 // SUPER CONTRA CLONE - NES Style Run-and-Gun
 // ============================================
+// VERSION 2 - Fixed enemy spawning
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -185,6 +186,8 @@ function generateLevel() {
     enemies = [];
     powerups = [];
     capsules = [];
+    
+    console.log('Generating level...');
     boss = null;
 
     // Ground platforms - extended for boss arena
@@ -213,39 +216,42 @@ function generateLevel() {
     // Boss arena platform
     platforms.push({ x: 2700, y: 300, width: 300, height: 16 });
 
-    // Spawn ground soldiers - only one at the beginning, rest later
-    enemies.push({ x: 400, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 700, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1100, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1500, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1900, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-
-    // Spawn turrets
-    enemies.push({ x: 450, y: 224, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
+    // Spawn enemies with progressive difficulty
+    // Early game: First enemy at x: 450, well ahead of player start position
+    enemies.push({ x: 450, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    
+    // Mid game (x: 900-1500): Add turrets and more soldiers
+    enemies.push({ x: 950, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
     enemies.push({ x: 1050, y: 244, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 2050, y: 284, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
-
-    // Spawn platform soldiers
-    enemies.push({ x: 850, y: 164, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 1250, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    
+    // Late game (x: 1600-2400): Runners, flyers, more variety
     enemies.push({ x: 1650, y: 144, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-
-    // Spawn runners (fast moving enemies)
-    enemies.push({ x: 600, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1200, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1800, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 1750, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 1900, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2050, y: 284, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2150, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
     enemies.push({ x: 2300, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    
+    // Add flyers at safe positions (far to the right)
+    enemies.push({ x: 1800, y: 150, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2400, y: 120, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
+    
+    // Remove any enemies that somehow spawned left of player start (safety check)
+    const beforeFilter = enemies.length;
+    enemies = enemies.filter(e => e.x >= 200);
+    if (enemies.length < beforeFilter) {
+        console.log('REMOVED', beforeFilter - enemies.length, 'enemies that were left of x: 200');
+    }
+    
+    console.log('FINAL ENEMY COUNT:', enemies.length);
+    enemies.forEach((e, i) => console.log(`Enemy ${i}: ${e.type} at x:${e.x} y:${e.y}`));
 
-    // Spawn flyers
-    enemies.push({ x: 800, y: 150, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1400, y: 120, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 2000, y: 150, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
-
-    // Spawn capsules (flying weapon drops)
-    capsules.push({ x: 350, y: 100, vx: 1, type: 'spread', active: true });
-    capsules.push({ x: 750, y: 80, vx: 1, type: 'laser', active: true });
-    capsules.push({ x: 1250, y: 90, vx: 1, type: 'fire', active: true });
-    capsules.push({ x: 1850, y: 100, vx: 1, type: 'spread', active: true });
-    capsules.push({ x: 2250, y: 80, vx: 1, type: 'laser', active: true });
+    // Spawn capsules (flying weapon drops) - spread throughout level
+    capsules.push({ x: 600, y: 100, vx: 1, type: 'spread', active: true });
+    capsules.push({ x: 1200, y: 80, vx: 1, type: 'laser', active: true });
+    capsules.push({ x: 1800, y: 90, vx: 1, type: 'fire', active: true });
+    capsules.push({ x: 2400, y: 100, vx: 1, type: 'spread', active: true });
 }
 
 // ============================================
@@ -664,6 +670,23 @@ function updateBullets() {
             }
         }
 
+        // Check capsule hits - shoot them down to make them fall
+        for (let c of capsules) {
+            if (!c.active || c.falling) continue;
+            if (Math.abs(b.x - c.x) < 20 && Math.abs(b.y - c.y) < 20) {
+                // Shot the capsule - make it fall
+                c.falling = true;
+                c.vx = 0;
+                c.vy = 0;
+                playSound('hit');
+                createParticle(c.x, c.y, 'spark');
+                if (b.type !== 'laser') {
+                    bullets.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
         if (b.life <= 0) bullets.splice(i, 1);
     }
 
@@ -711,12 +734,13 @@ function updateEnemies() {
             e.facing = e.vx > 0 ? 1 : -1;
         }
 
-        // Shooting AI
+        // Shooting AI - only shoot if enemy is on screen
         e.shootTimer++;
         let shootChance = e.type === 'turret' ? 0.02 : 0.008;
         let shootRange = e.type === 'turret' ? 350 : 250;
+        let onScreen = e.x > camera.x - 50 && e.x < camera.x + WIDTH + 50;
 
-        if (dist < shootRange && e.shootTimer > 60 && Math.random() < shootChance) {
+        if (onScreen && dist < shootRange && e.shootTimer > 60 && Math.random() < shootChance) {
             e.shootTimer = 0;
             let speed = e.type === 'turret' ? 5 : 4;
 
@@ -750,8 +774,9 @@ function updateEnemies() {
         // Remove enemies far off screen
         if (e.x < camera.x - 100 || e.x > camera.x + WIDTH + 500) {
             if (e.type === 'runner' || e.type === 'flyer') {
-                // Respawn runners/flyers
-                e.x = e.vx > 0 ? camera.x - 50 : camera.x + WIDTH + 200;
+                // Respawn runners/flyers ahead of player, never behind
+                e.x = camera.x + WIDTH + 200;
+                e.y = e.type === 'flyer' ? 120 + Math.random() * 80 : 364;
             }
         }
     }
@@ -761,12 +786,28 @@ function updateCapsules() {
     for (let c of capsules) {
         if (!c.active) continue;
 
-        // Move capsule in sine wave
-        c.x += c.vx;
-        c.y += Math.sin(frameCount * 0.03) * 0.5;
+        if (c.falling) {
+            // Falling to ground
+            c.vy += 0.3; // gravity
+            c.y += c.vy;
+            c.x += c.vx * 0.5; // slow horizontal movement
 
-        // Bounce off edges
-        if (c.x < 100 || c.x > 1900) c.vx *= -1;
+            // Check ground collision
+            let groundY = 400 - 12; // ground level minus capsule height
+            if (c.y >= groundY) {
+                c.y = groundY;
+                c.vy = 0;
+                c.vx = 0;
+                c.onGround = true;
+            }
+        } else {
+            // Flying in sine wave
+            c.x += c.vx;
+            c.y += Math.sin(frameCount * 0.03) * 0.5;
+
+            // Bounce off edges
+            if (c.x < 100 || c.x > 1900) c.vx *= -1;
+        }
 
         // Check collision with player
         let dx = player.x - c.x;
