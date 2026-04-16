@@ -158,8 +158,10 @@ document.addEventListener('keydown', (e) => {
         restartGame();
     }
 
+    // Prevent default for game keys to stop page scrolling
     if (['z','x','arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)) {
         e.preventDefault();
+        e.stopPropagation();
     }
 });
 
