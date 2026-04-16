@@ -450,23 +450,19 @@ function updatePlayer() {
     // Aiming - cycles through angles: 0° → 45° → 90° with each press
     // Aiming persists until changed with up/down keys
     if (keysPressed['arrowup']) {
-        console.log('arrowup pressed, current aiming:', player.aiming);
         if (player.aiming === 0) player.aiming = -0.5;      // 0° → 45° up
         else if (player.aiming === -0.5) player.aiming = -1;  // 45° up → 90° up
         else if (player.aiming === -1) player.aiming = 0;     // 90° up → 0°
         else if (player.aiming === 0.5) player.aiming = 0;    // 45° down → 0°
         else if (player.aiming === 1) player.aiming = 0;      // 90° down → 0°
-        console.log('new aiming:', player.aiming);
         keysPressed['arrowup'] = false; // consume the press
     }
-    if (keysPressed['arrowdown'] && !player.onGround) {
-        console.log('arrowdown pressed, current aiming:', player.aiming);
+    if (keysPressed['arrowdown']) {
         if (player.aiming === 0) player.aiming = 0.5;       // 0° → 45° down
         else if (player.aiming === 0.5) player.aiming = 1;   // 45° down → 90° down
         else if (player.aiming === 1) player.aiming = 0;     // 90° down → 0°
         else if (player.aiming === -0.5) player.aiming = 0;  // 45° up → 0°
         else if (player.aiming === -1) player.aiming = 0;    // 90° up → 0°
-        console.log('new aiming:', player.aiming);
         keysPressed['arrowdown'] = false; // consume the press
     }
 
