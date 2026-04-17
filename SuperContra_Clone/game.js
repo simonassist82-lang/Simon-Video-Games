@@ -40,7 +40,8 @@ let player = {
     shooting: false,
     shootCooldown: 0,
     invulnerable: 0,
-    weapon: 'normal' // normal, spread, laser, fire
+    weapon: 'normal', // normal, spread, laser, fire
+    crouching: false
 };
 
 // Bullets
@@ -58,6 +59,9 @@ let powerups = [];
 
 // Flying capsules (weapon drops)
 let capsules = [];
+
+// Extra life bonuses
+let extraLives = [];
 
 // Boss
 let boss = null;
@@ -154,13 +158,23 @@ document.addEventListener('keydown', (e) => {
         keysPressed[key] = true;
     }
 
+    // Start game with Enter from menu or game over
+    if ((key === 'enter' || e.key === 'Enter') && (gameState === 'menu' || gameState === 'gameover')) {
+        console.log('Enter pressed, gameState:', gameState, 'starting game...');
+        if (gameState === 'menu') {
+            startGame();
+        } else {
+            restartGame();
+        }
+    }
+
     // Restart on R during victory
     if (key === 'r' && gameState === 'victory') {
         restartGame();
     }
 
     // Prevent default for game keys to stop page scrolling
-    if (['z','x','arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)) {
+    if (['z','x','c','arrowup','arrowdown','arrowleft','arrowright',' ','enter'].includes(key) || e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
     }
@@ -186,12 +200,13 @@ function generateLevel() {
     enemies = [];
     powerups = [];
     capsules = [];
+    extraLives = [];
     
     console.log('Generating level...');
     boss = null;
 
-    // Ground platforms - extended for boss arena
-    for (let x = 0; x < 3000; x += 64) {
+    // Ground platforms - extended for longer level
+    for (let x = 0; x < 5000; x += 64) {
         platforms.push({
             x: x,
             y: 400,
@@ -200,7 +215,7 @@ function generateLevel() {
         });
     }
 
-    // Elevated platforms
+    // Elevated platforms - Section 1 (early game)
     platforms.push({ x: 200, y: 320, width: 128, height: 16 });
     platforms.push({ x: 400, y: 260, width: 96, height: 16 });
     platforms.push({ x: 600, y: 320, width: 128, height: 16 });
@@ -209,33 +224,58 @@ function generateLevel() {
     platforms.push({ x: 1200, y: 220, width: 96, height: 16 });
     platforms.push({ x: 1400, y: 300, width: 128, height: 16 });
     platforms.push({ x: 1600, y: 180, width: 80, height: 16 });
+    
+    // Section 2 (mid game)
     platforms.push({ x: 2000, y: 320, width: 128, height: 16 });
     platforms.push({ x: 2200, y: 260, width: 96, height: 16 });
     platforms.push({ x: 2400, y: 340, width: 160, height: 16 });
+    platforms.push({ x: 2600, y: 200, width: 64, height: 16 });
+    platforms.push({ x: 2800, y: 280, width: 128, height: 16 });
+    platforms.push({ x: 3000, y: 220, width: 96, height: 16 });
+    platforms.push({ x: 3200, y: 300, width: 160, height: 16 });
+    platforms.push({ x: 3400, y: 180, width: 80, height: 16 });
+    
+    // Section 3 (late game)
+    platforms.push({ x: 3800, y: 320, width: 128, height: 16 });
+    platforms.push({ x: 4000, y: 260, width: 96, height: 16 });
+    platforms.push({ x: 4200, y: 340, width: 160, height: 16 });
+    platforms.push({ x: 4400, y: 200, width: 64, height: 16 });
 
-    // Boss arena platform
-    platforms.push({ x: 2700, y: 300, width: 300, height: 16 });
+    // Boss arena platform - at the very end
+    platforms.push({ x: 4700, y: 350, width: 400, height: 16 });
 
     // Spawn enemies with progressive difficulty
-    // Early game: First enemy at x: 450, well ahead of player start position
+    // Section 1 (x: 450-1800): Early game
     enemies.push({ x: 450, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    
-    // Mid game (x: 900-1500): Add turrets and more soldiers
+    enemies.push({ x: 700, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
     enemies.push({ x: 950, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
     enemies.push({ x: 1050, y: 244, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
     enemies.push({ x: 1250, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    
-    // Late game (x: 1600-2400): Runners, flyers, more variety
+    enemies.push({ x: 1500, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
     enemies.push({ x: 1650, y: 144, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1750, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 1900, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 2050, y: 284, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 2150, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 2300, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
-    
-    // Add flyers at safe positions (far to the right)
     enemies.push({ x: 1800, y: 150, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
-    enemies.push({ x: 2400, y: 120, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
+    
+    // Section 2 (x: 2000-3500): Mid game - more challenging
+    enemies.push({ x: 2100, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2250, y: 244, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2400, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2550, y: 164, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2700, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2850, y: 284, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 3000, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 3200, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 3350, y: 144, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 2600, y: 120, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 3100, y: 150, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
+    
+    // Section 3 (x: 3800-4600): Late game - intense
+    enemies.push({ x: 3900, y: 364, vx: 0, vy: 0, type: 'soldier', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 4050, y: 284, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 4200, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 4350, y: 364, vx: -2, vy: 0, type: 'runner', hp: 1, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 4500, y: 244, vx: 0, vy: 0, type: 'turret', hp: 3, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 3800, y: 130, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
+    enemies.push({ x: 4300, y: 110, vx: -1.5, vy: 0, type: 'flyer', hp: 2, facing: -1, shootTimer: 0 });
     
     // Remove any enemies that somehow spawned left of player start (safety check)
     const beforeFilter = enemies.length;
@@ -247,11 +287,16 @@ function generateLevel() {
     console.log('FINAL ENEMY COUNT:', enemies.length);
     enemies.forEach((e, i) => console.log(`Enemy ${i}: ${e.type} at x:${e.x} y:${e.y}`));
 
-    // Spawn capsules (flying weapon drops) - spread throughout level
-    capsules.push({ x: 600, y: 100, vx: 1, type: 'spread', active: true });
-    capsules.push({ x: 1200, y: 80, vx: 1, type: 'laser', active: true });
-    capsules.push({ x: 1800, y: 90, vx: 1, type: 'fire', active: true });
-    capsules.push({ x: 2400, y: 100, vx: 1, type: 'spread', active: true });
+    // Spawn capsules (flying weapon drops) - reduced number
+    capsules.push({ x: 1200, y: 80, vx: 1, type: 'laser', active: true, falling: false, vy: 0 });
+    capsules.push({ x: 2800, y: 90, vx: 1, type: 'fire', active: true, falling: false, vy: 0 });
+    capsules.push({ x: 4000, y: 100, vx: 1, type: 'spread', active: true, falling: false, vy: 0 });
+    console.log('Spawned', capsules.length, 'capsules:', capsules.map(c => c.type + ' at x:' + c.x).join(', '));
+    
+    // Spawn extra life bonuses (1-2 per level) - can be shot down like capsules
+    extraLives.push({ x: 2000, y: 100, vx: 0.8, vy: 0, active: true, falling: false });
+    extraLives.push({ x: 3500, y: 120, vx: -0.8, vy: 0, active: true, falling: false });
+    console.log('Spawned', extraLives.length, 'extra lives at:', extraLives.map(el => 'x:' + el.x).join(', '));
 }
 
 // ============================================
@@ -276,23 +321,51 @@ function update() {
     updateBullets();
     updateEnemies();
     updateCapsules();
+    updateExtraLives();
     updateBoss();
     updateParticles();
     updateCamera();
     updateUI();
 
-    // Check for boss spawn
-    if (!boss && player.x > 2600) {
+    // Check for boss spawn - at the end of the extended level
+    if (!boss && player.x > 4650) {
         spawnBoss();
     }
 
-    // Check for level complete
-    if (boss && boss.hp <= 0 && gameState !== 'victory') {
-        gameState = 'victory';
-        score += 5000;
-        // Victory explosion effect
-        for (let i = 0; i < 50; i++) {
-            createParticle(boss.x, boss.y, 'explosion');
+    // Check for boss death - trigger death animation first
+    if (boss && boss.hp <= 0 && !boss.dying && gameState !== 'victory') {
+        boss.dying = true;
+        boss.deathTimer = 0;
+        // Big explosion when boss dies
+        for (let k = 0; k < 20; k++) {
+            createParticle(boss.x + (Math.random() - 0.5) * 60, boss.y + (Math.random() - 0.5) * 80, 'explosion');
+        }
+        playSound('explosion');
+    }
+    
+    // Handle boss death animation
+    if (boss && boss.dying) {
+        boss.deathTimer++;
+        // Continuous explosions during death
+        if (boss.deathTimer % 10 === 0) {
+            for (let k = 0; k < 5; k++) {
+                createParticle(boss.x + (Math.random() - 0.5) * 60, boss.y + (Math.random() - 0.5) * 80, 'explosion');
+            }
+            playSound('explosion');
+        }
+        // Screen shake during death
+        screenShake = 15;
+        // After 3 seconds (180 frames), show victory
+        if (boss.deathTimer > 180) {
+            let bossX = boss.x;
+            let bossY = boss.y;
+            boss = null;
+            gameState = 'victory';
+            score += 5000;
+            // Victory explosion effect
+            for (let i = 0; i < 50; i++) {
+                createParticle(bossX, bossY, 'explosion');
+            }
         }
     }
 
@@ -350,21 +423,34 @@ function updateParticles() {
 
 function spawnBoss() {
     boss = {
-        x: 2850,
-        y: 250,
+        x: 4850,
+        y: 300,
         vx: 0,
         vy: 0,
-        hp: 50,
-        maxHp: 50,
+        hp: 60,
+        maxHp: 60,
         phase: 1,
         shootTimer: 0,
         moveTimer: 0,
-        facing: -1
+        facing: -1,
+        windup: false,
+        vulnerable: false,
+        dying: false,
+        deathTimer: 0
     };
+    console.log('BOSS SPAWNED at x:', boss.x);
 }
 
 function updateBoss() {
     if (!boss) return;
+    
+    // Skip normal behavior if boss is dying
+    if (boss.dying) {
+        // Boss falls while dying
+        boss.y += 2;
+        if (boss.y > 500) boss.y = 500; // Fall off screen
+        return;
+    }
 
     let dx = player.x - boss.x;
     let dy = player.y - boss.y;
@@ -373,52 +459,80 @@ function updateBoss() {
     boss.facing = dx > 0 ? 1 : -1;
     boss.shootTimer++;
     boss.moveTimer++;
-
-    // Boss movement pattern
-    if (boss.moveTimer < 120) {
-        boss.vx = boss.facing * 1.5;
-    } else if (boss.moveTimer < 180) {
-        boss.vx = 0;
-    } else {
-        boss.moveTimer = 0;
-    }
-
-    // Boss vertical movement
-    if (boss.y < 200) boss.vy = 1;
-    else if (boss.y > 350) boss.vy = -1;
-    else boss.vy = Math.sin(frameCount * 0.02) * 0.5;
-
-    boss.x += boss.vx;
-    boss.y += boss.vy;
-
-    // Boss shooting patterns
-    if (boss.shootTimer > 40) {
-        boss.shootTimer = 0;
-
-        if (boss.hp > 25) {
-            // Phase 1: Spread shot
-            for (let i = -2; i <= 2; i++) {
-                let angle = Math.atan2(dy, dx) + i * 0.2;
+    
+    // Boss phases: MOVE -> WARN -> ATTACK -> COOLDOWN
+    // Total cycle: 240 frames (4 seconds at 60fps)
+    const cycleLength = 240;
+    const phase = boss.moveTimer % cycleLength;
+    
+    // Movement pattern - predictable side-to-side
+    // Moves slowly in a figure-8 pattern
+    boss.x = 4850 + Math.sin(frameCount * 0.01) * 150;
+    boss.y = 280 + Math.sin(frameCount * 0.02) * 60;
+    
+    // Visual indicator of upcoming attack
+    boss.windup = (phase > 120 && phase < 150); // Warning phase
+    
+    // Attack only during specific windows
+    if (phase === 150) {
+        // ATTACK PHASE - choose attack based on HP
+        playSound('enemyShoot');
+        
+        if (boss.hp > 50) {
+            // PHASE 1: Triple spread (dodgeable gaps)
+            // Three waves with gaps between
+            for (let wave = 0; wave < 3; wave++) {
+                setTimeout(() => {
+                    if (!boss) return;
+                    for (let i = -1; i <= 1; i++) {
+                        if (i === 0) continue; // Gap in middle
+                        let angle = Math.atan2(dy, dx) + i * 0.4;
+                        enemyBullets.push({
+                            x: boss.x,
+                            y: boss.y,
+                            vx: Math.cos(angle) * 4,
+                            vy: Math.sin(angle) * 4,
+                            life: 120
+                        });
+                    }
+                    playSound('enemyShoot');
+                }, wave * 400); // 400ms between waves
+            }
+        } else if (boss.hp > 25) {
+            // PHASE 2: Wall pattern with gaps
+            // Vertical wall that has holes to dodge through
+            for (let i = -3; i <= 3; i++) {
+                if (Math.abs(i) === 2) continue; // Gap at position 2
+                enemyBullets.push({
+                    x: boss.x,
+                    y: boss.y + i * 15,
+                    vx: (dx / dist) * 3.5,
+                    vy: (dy / dist) * 3.5 + i * 0.5,
+                    life: 120
+                });
+            }
+        } else {
+            // PHASE 3: Cross pattern (desperate)
+            // X pattern that rotates - dodge in the corners
+            let baseAngle = frameCount * 0.05;
+            for (let i = 0; i < 4; i++) {
+                let angle = baseAngle + i * Math.PI / 2;
                 enemyBullets.push({
                     x: boss.x,
                     y: boss.y,
                     vx: Math.cos(angle) * 5,
                     vy: Math.sin(angle) * 5,
-                    life: 150
-                });
-            }
-        } else {
-            // Phase 2: Rapid fire + aimed shots
-            for (let i = 0; i < 3; i++) {
-                enemyBullets.push({
-                    x: boss.x + (i - 1) * 20,
-                    y: boss.y,
-                    vx: (dx / dist) * 6,
-                    vy: (dy / dist) * 6,
-                    life: 150
+                    life: 100
                 });
             }
         }
+    }
+    
+    // Clear bullets during cooldown (phase 200-240) - safe time to attack
+    if (phase > 200) {
+        boss.vulnerable = true;
+    } else {
+        boss.vulnerable = false;
     }
 
     // Boss collision with player bullets
@@ -481,6 +595,32 @@ function updatePlayer() {
         playSound('jump');
     }
 
+    // Crouch - lay flat on ground
+    if (keys['c'] && player.onGround) {
+        if (!player.crouching) {
+            player.crouching = true;
+            player.height = 18; // Half height when crouching
+            player.y += 9; // Adjust position to stay on ground
+        }
+    } else if (player.crouching) {
+        // Stand up - check if there's room above
+        let canStand = true;
+        for (let plat of platforms) {
+            if (player.x + player.width/2 > plat.x &&
+                player.x - player.width/2 < plat.x + plat.width &&
+                player.y - 36 < plat.y + plat.height &&
+                player.y > plat.y) {
+                canStand = false;
+                break;
+            }
+        }
+        if (canStand) {
+            player.crouching = false;
+            player.y -= 9;
+            player.height = 36;
+        }
+    }
+
     // Shoot
     if (keys['x'] && player.shootCooldown <= 0) {
         shootBullet();
@@ -514,7 +654,7 @@ function updatePlayer() {
 
     // Screen boundaries
     if (player.x < 20) player.x = 20;
-    if (player.x > 1980) player.x = 1980;
+    if (player.x > 4980) player.x = 4980;
 
     // Invulnerability countdown
     if (player.invulnerable > 0) player.invulnerable--;
@@ -533,8 +673,12 @@ function shootBullet() {
     let life = 60;
     let color = '#ffff00';
 
-    // Adjust for aiming - now supports 0, 45, and 90 degrees
-    if (player.aiming === -1) {
+    // When crouching, always shoot straight ahead (horizontal)
+    if (player.crouching) {
+        by = player.y; // Lower bullet position when crouching
+        bvx = BULLET_SPEED * player.facing;
+        bvy = 0;
+    } else if (player.aiming === -1) {
         // 90° up
         by = player.y - 20;
         bvx = 0;
@@ -687,6 +831,23 @@ function updateBullets() {
             }
         }
 
+        // Check extra life hits - shoot them down to make them fall
+        for (let el of extraLives) {
+            if (!el.active || el.falling) continue;
+            if (Math.abs(b.x - el.x) < 20 && Math.abs(b.y - el.y) < 20) {
+                // Shot the extra life - make it fall
+                el.falling = true;
+                el.vx = 0;
+                el.vy = 0;
+                playSound('hit');
+                createParticle(el.x, el.y, 'spark');
+                if (b.type !== 'laser') {
+                    bullets.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
         if (b.life <= 0) bullets.splice(i, 1);
     }
 
@@ -805,8 +966,7 @@ function updateCapsules() {
             c.x += c.vx;
             c.y += Math.sin(frameCount * 0.03) * 0.5;
 
-            // Bounce off edges
-            if (c.x < 100 || c.x > 1900) c.vx *= -1;
+
         }
 
         // Check collision with player
@@ -824,11 +984,52 @@ function updateCapsules() {
     }
 }
 
+function updateExtraLives() {
+    for (let el of extraLives) {
+        if (!el.active) continue;
+
+        if (el.falling) {
+            // Falling to ground
+            el.vy += 0.3; // gravity
+            el.y += el.vy;
+            el.x += el.vx * 0.5;
+
+            // Check ground collision
+            let groundY = 400 - 12;
+            if (el.y >= groundY) {
+                el.y = groundY;
+                el.vy = 0;
+                el.vx = 0;
+                el.onGround = true;
+            }
+        } else {
+            // Flying in sine wave
+            el.x += el.vx;
+            el.y += Math.sin(frameCount * 0.03) * 0.5;
+
+
+        }
+
+        // Check collision with player
+        let dx = player.x - el.x;
+        let dy = player.y - el.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < 25) {
+            // Collect extra life
+            lives++;
+            el.active = false;
+            score += 100;
+            playSound('powerup');
+        }
+    }
+}
+
 function updateCamera() {
     // Camera follows player
     let targetCamX = player.x - WIDTH / 3;
     camera.x += (targetCamX - camera.x) * 0.1;
-    camera.x = Math.max(0, Math.min(camera.x, 3000 - WIDTH));
+    camera.x = Math.max(0, Math.min(camera.x, 5000 - WIDTH));
 }
 
 function updateUI() {
@@ -865,7 +1066,12 @@ function draw() {
     ctx.fillStyle = '#1a3d1a';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    if (gameState === 'menu') return;
+    if (gameState === 'menu') {
+        console.log('Draw: menu state, skipping draw');
+        return;
+    }
+    
+    if (frameCount % 60 === 0) console.log('Draw: gameState =', gameState, 'capsules.length =', capsules.length, 'active capsules =', capsules.filter(c => c.active).length);
 
     // Apply screen shake
     let shakeX = 0, shakeY = 0;
@@ -951,7 +1157,15 @@ function draw() {
 
     // Draw capsules
     for (let c of capsules) {
-        if (c.active) drawCapsule(c);
+        if (c.active) {
+            console.log('Drawing capsule at x:', c.x, 'y:', c.y, 'type:', c.type);
+            drawCapsule(c);
+        }
+    }
+
+    // Draw extra lives
+    for (let el of extraLives) {
+        if (el.active) drawExtraLife(el);
     }
 
     // Draw enemies
@@ -992,60 +1206,107 @@ function drawBoss() {
     ctx.save();
     ctx.translate(boss.x, boss.y);
 
-    // Boss body - large alien creature
-    ctx.fillStyle = boss.hp > 25 ? '#880000' : '#ff0000';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 40, 50, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Boss armor plates
-    ctx.fillStyle = '#444444';
-    ctx.fillRect(-30, -40, 60, 15);
-    ctx.fillRect(-25, -20, 50, 12);
-    ctx.fillRect(-20, 0, 40, 12);
-
-    // Boss eyes
-    ctx.fillStyle = '#ffff00';
-    ctx.beginPath();
-    ctx.arc(-15, -20, 8, 0, Math.PI * 2);
-    ctx.arc(15, -20, 8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Eye pupils
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(-15 + boss.facing * 3, -20, 3, 0, Math.PI * 2);
-    ctx.arc(15 + boss.facing * 3, -20, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Boss mouth
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.ellipse(0, 20, 20, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Teeth
-    ctx.fillStyle = '#ffffff';
-    for (let i = -3; i <= 3; i++) {
+    // Dying animation - flash and shrink
+    if (boss.dying) {
+        let flash = Math.sin(boss.deathTimer * 0.5) > 0;
+        let shrink = Math.min(1, boss.deathTimer / 100);
+        
+        ctx.scale(1 - shrink * 0.5, 1 - shrink * 0.5);
+        
+        // Flash white/red
+        ctx.fillStyle = flash ? '#ffffff' : '#ff0000';
         ctx.beginPath();
-        ctx.moveTo(i * 5, 15);
-        ctx.lineTo(i * 5 + 3, 25);
-        ctx.lineTo(i * 5 - 3, 25);
+        ctx.ellipse(0, 0, 40, 50, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // X eyes when dying
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-20, -25);
+        ctx.lineTo(-10, -15);
+        ctx.moveTo(-10, -25);
+        ctx.lineTo(-20, -15);
+        ctx.moveTo(10, -25);
+        ctx.lineTo(20, -15);
+        ctx.moveTo(20, -25);
+        ctx.lineTo(10, -15);
+        ctx.stroke();
+    } else {
+        // Windup warning - flash red when about to attack
+        if (boss.windup) {
+            ctx.fillStyle = `rgba(255, 0, 0, ${0.3 + Math.sin(frameCount * 0.5) * 0.2})`;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 50, 60, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Vulnerable phase - flash green (safe to attack)
+        if (boss.vulnerable) {
+            ctx.fillStyle = `rgba(0, 255, 0, ${0.2 + Math.sin(frameCount * 0.3) * 0.1})`;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 45, 55, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Boss body - large alien creature
+        ctx.fillStyle = boss.hp > 25 ? '#880000' : '#ff0000';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 40, 50, 0, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Boss health bar
-    ctx.fillStyle = '#333333';
-    ctx.fillRect(-50, -70, 100, 12);
-    ctx.fillStyle = boss.hp > 25 ? '#00ff00' : '#ff0000';
-    ctx.fillRect(-48, -68, 96 * (boss.hp / boss.maxHp), 8);
+    // Only draw details if not dying (or draw simplified version)
+    if (!boss.dying) {
+        // Boss armor plates
+        ctx.fillStyle = '#444444';
+        ctx.fillRect(-30, -40, 60, 15);
+        ctx.fillRect(-25, -20, 50, 12);
+        ctx.fillRect(-20, 0, 40, 12);
 
-    // Boss warning text
-    if (boss.hp <= 25) {
-        ctx.fillStyle = '#ff0000';
-        ctx.font = 'bold 14px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('ENRAGED!', 0, -80);
+        // Boss eyes
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(-15, -20, 8, 0, Math.PI * 2);
+        ctx.arc(15, -20, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye pupils
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(-15 + boss.facing * 3, -20, 3, 0, Math.PI * 2);
+        ctx.arc(15 + boss.facing * 3, -20, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Boss mouth
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.ellipse(0, 20, 20, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Teeth
+        ctx.fillStyle = '#ffffff';
+        for (let i = -3; i <= 3; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * 5, 15);
+            ctx.lineTo(i * 5 + 3, 25);
+            ctx.lineTo(i * 5 - 3, 25);
+            ctx.fill();
+        }
+
+        // Boss health bar
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(-50, -70, 100, 12);
+        ctx.fillStyle = boss.hp > 25 ? '#00ff00' : '#ff0000';
+        ctx.fillRect(-48, -68, 96 * (boss.hp / boss.maxHp), 8);
+
+        // Boss warning text
+        if (boss.hp <= 25) {
+            ctx.fillStyle = '#ff0000';
+            ctx.font = 'bold 14px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('ENRAGED!', 0, -80);
+        }
     }
 
     ctx.restore();
@@ -1056,25 +1317,48 @@ function drawPlayer() {
     ctx.translate(player.x, player.y);
     ctx.scale(player.facing, 1);
 
-    // Body
-    ctx.fillStyle = '#ff4444';
-    ctx.fillRect(-8, -18, 16, 20);
+    if (player.crouching) {
+        // CROUCHING - lay flat
+        // Body (horizontal)
+        ctx.fillStyle = '#ff4444';
+        ctx.fillRect(-8, -9, 20, 12);
 
-    // Pants
-    ctx.fillStyle = '#4444ff';
-    ctx.fillRect(-8, 2, 16, 14);
+        // Pants
+        ctx.fillStyle = '#4444ff';
+        ctx.fillRect(-12, -9, 8, 12);
 
-    // Head
-    ctx.fillStyle = '#ffccaa';
-    ctx.fillRect(-6, -28, 12, 10);
+        // Head
+        ctx.fillStyle = '#ffccaa';
+        ctx.fillRect(8, -12, 10, 10);
 
-    // Bandana
-    ctx.fillStyle = '#ff0000';
-    ctx.fillRect(-7, -26, 14, 4);
+        // Bandana
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(8, -10, 10, 4);
 
-    // Gun - now supports 0°, 45°, and 90° angles
-    ctx.fillStyle = '#888888';
-    if (player.aiming === -1) {
+        // Gun - horizontal when crouching
+        ctx.fillStyle = '#888888';
+        ctx.fillRect(4, -5, 16, 6);
+    } else {
+        // STANDING - normal pose
+        // Body
+        ctx.fillStyle = '#ff4444';
+        ctx.fillRect(-8, -18, 16, 20);
+
+        // Pants
+        ctx.fillStyle = '#4444ff';
+        ctx.fillRect(-8, 2, 16, 14);
+
+        // Head
+        ctx.fillStyle = '#ffccaa';
+        ctx.fillRect(-6, -28, 12, 10);
+
+        // Bandana
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(-7, -26, 14, 4);
+
+        // Gun - now supports 0°, 45°, and 90° angles
+        ctx.fillStyle = '#888888';
+        if (player.aiming === -1) {
         // 90° up
         ctx.fillRect(4, -25, 4, 12);
     } else if (player.aiming === -0.5) {
@@ -1098,6 +1382,7 @@ function drawPlayer() {
         // 0° forward
         ctx.fillRect(4, -10, 16, 6);
     }
+    } // End of standing/crouching if block
 
     ctx.restore();
 }
@@ -1129,6 +1414,34 @@ function drawCapsule(c) {
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.strokeRect(-12, -8, 24, 16);
+
+    ctx.restore();
+}
+
+function drawExtraLife(el) {
+    ctx.save();
+    ctx.translate(el.x, el.y);
+
+    // Pulsing glow effect
+    let pulse = 0.7 + Math.sin(frameCount * 0.1) * 0.3;
+    ctx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Heart shape
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    ctx.bezierCurveTo(-10, -5, -15, -10, 0, -15);
+    ctx.bezierCurveTo(15, -10, 10, -5, 0, 5);
+    ctx.fill();
+
+    // "1UP" text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('1UP', 0, 2);
 
     ctx.restore();
 }
@@ -1219,9 +1532,11 @@ function drawEnemy(e) {
 // ============================================
 
 function startGame() {
+    console.log('startGame called, gameState was:', gameState);
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'none';
     gameState = 'playing';
+    console.log('gameState now:', gameState);
 
     // Initialize audio context on user interaction
     initAudio();
